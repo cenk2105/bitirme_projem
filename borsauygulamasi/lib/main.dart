@@ -1,4 +1,4 @@
-import 'package:borsauygulamasi/screens/user_process/login_page.dart';
+import 'package:borsauygulamasi/screens/main_screen.dart';
 import 'package:flutter/material.dart';
 
 void main(List<String> args) {
@@ -10,6 +10,6 @@ class Uygulama extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(debugShowCheckedModeBanner: false, home: LoginPage());
+    return MaterialApp(debugShowCheckedModeBanner: false, home: MainScreen());
   }
 }

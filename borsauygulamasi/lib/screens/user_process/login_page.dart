@@ -75,7 +75,7 @@ class _LoginPageState extends State<LoginPage> {
                     },
                   ),
                   filled: true,
-                  fillColor: Color(0xFF1F1F1F),
+                  fillColor: Colors.black87,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -110,6 +110,12 @@ class _LoginPageState extends State<LoginPage> {
                   // Buraya giriş işlemini ekleyebilirsin
                   print('E-posta: ${emailController.text}');
                   print('Şifre: ${passwordController.text}');
+                  //Bu kisimda yonlendirme ile beraber
+                  /*Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => CoinListScreen()),
+                    (route) => false,
+                  );*/
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amberAccent,

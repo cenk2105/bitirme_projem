@@ -3,18 +3,33 @@ import 'package:flutter/material.dart';
 
 class SignupPage extends StatefulWidget {
   @override
-  _SignupPage createState() => _SignupPage();
+  _SignupPageState createState() => _SignupPageState(); // İsimlendirme standardı için düzenlendi
 }
 
-class _SignupPage extends State<SignupPage> {
+class _SignupPageState extends State<SignupPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  // 1. Şifre doğrulama için AYRI bir kontrolcü ekledik
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
+
   bool obscurePassword = true;
+  // 2. Şifre doğrulama görünürlüğü için AYRI bir değişken ekledik
+  bool obscureConfirmPassword = true;
+
+  @override
+  void dispose() {
+    // Kontrolcüleri bellekten temizlemek her zaman iyi bir pratiktir
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromRGBO(155, 159, 163, 1.0),
+      backgroundColor: const Color.fromRGBO(155, 159, 163, 1.0),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -22,17 +37,16 @@ class _SignupPage extends State<SignupPage> {
           onPressed: () {
             Navigator.pop(context);
           },
-          icon: Icon(Icons.arrow_back_rounded, color: Colors.amberAccent),
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.amberAccent),
         ),
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: 30, vertical: 50),
+          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 50),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Başlık
-              Text(
+              const Text(
                 'Kayıt Ol',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -41,88 +55,42 @@ class _SignupPage extends State<SignupPage> {
                   color: Colors.black87,
                 ),
               ),
-              SizedBox(height: 40),
+              const SizedBox(height: 40),
 
-              // E-posta TextField
-              TextField(
+              // E-posta Alanı
+              _buildTextField(
                 controller: emailController,
+                hintText: 'E-posta...',
+                icon: Icons.email,
                 keyboardType: TextInputType.emailAddress,
-                style: TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'E-posta...',
-                  hintStyle: TextStyle(color: Colors.grey[200]),
-                  prefixIcon: Icon(Icons.email, color: Colors.amberAccent),
-                  filled: true,
-                  fillColor: Colors.black87,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-              // Şifre TextField
-              TextField(
+              // Şifre Alanı
+              _buildPasswordField(
                 controller: passwordController,
-                obscureText: obscurePassword,
-                style: TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Şifre...',
-                  hintStyle: TextStyle(color: Colors.grey[200]),
-                  prefixIcon: Icon(Icons.lock, color: Colors.amberAccent),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      obscurePassword ? Icons.visibility : Icons.visibility_off,
-                      color: Colors.grey[400],
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        obscurePassword = !obscurePassword;
-                      });
-                    },
-                  ),
-                  filled: true,
-                  fillColor: Color(0xFF1F1F1F),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+                hintText: 'Şifre...',
+                isObscured: obscurePassword,
+                onToggle: () {
+                  setState(() {
+                    obscurePassword = !obscurePassword;
+                  });
+                },
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-              // Şifre TextField
-              TextField(
-                controller: passwordController,
-                obscureText: obscurePassword,
-                style: TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Şifreyi Doğrula...',
-                  hintStyle: TextStyle(color: Colors.grey[200]),
-                  prefixIcon: Icon(Icons.lock, color: Colors.amberAccent),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      obscurePassword ? Icons.visibility : Icons.visibility_off,
-                      color: Colors.grey[400],
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        obscurePassword = !obscurePassword;
-                      });
-                    },
-                  ),
-                  filled: true,
-                  fillColor: Color(0xFF1F1F1F),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+              // Şifre Doğrulama Alanı (Düzeltilen Kısım)
+              _buildPasswordField(
+                controller: confirmPasswordController, // Ayrı kontrolcü
+                hintText: 'Şifreyi Doğrula...',
+                isObscured: obscureConfirmPassword, // Ayrı görünürlük durumu
+                onToggle: () {
+                  setState(() {
+                    obscureConfirmPassword = !obscureConfirmPassword;
+                  });
+                },
               ),
-              SizedBox(height: 10),
 
-              // Şifremi unuttum
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -134,37 +102,98 @@ class _SignupPage extends State<SignupPage> {
                       ),
                     );
                   },
-                  child: Text(
+                  child: const Text(
                     'Şifremi unuttum?',
                     style: TextStyle(color: Colors.black54),
                   ),
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-              // Giriş Yap Butonu
               ElevatedButton(
                 onPressed: () {
-                  // Buraya giriş işlemini ekleyebilirsin
-                  print('E-posta: ${emailController.text}');
-                  print('Şifre: ${passwordController.text}');
+                  // Şifre kontrol mantığı örneği
+                  if (passwordController.text !=
+                      confirmPasswordController.text) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Şifreler uyuşmuyor!")),
+                    );
+                    return;
+                  }
+                  print('Kayıt İşlemi: ${emailController.text}');
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amberAccent,
                   foregroundColor: Colors.black,
-                  padding: EdgeInsets.symmetric(vertical: 15),
+                  padding: const EdgeInsets.symmetric(vertical: 15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   elevation: 5,
                 ),
-                child: Text(
-                  'Giriş Yap',
+                child: const Text(
+                  'Kayıt Ol', // Giriş Yap metni Kayıt Ol ile değiştirildi
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // Kod tekrarını önlemek için TextField'ları fonksiyonlaştırdım
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hintText,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(color: Colors.grey[200]),
+        prefixIcon: Icon(icon, color: Colors.amberAccent),
+        filled: true,
+        fillColor: Colors.black87,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String hintText,
+    required bool isObscured,
+    required VoidCallback onToggle,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: isObscured,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(color: Colors.grey[200]),
+        prefixIcon: const Icon(Icons.lock, color: Colors.amberAccent),
+        suffixIcon: IconButton(
+          icon: Icon(
+            isObscured ? Icons.visibility : Icons.visibility_off,
+            color: Colors.grey[400],
+          ),
+          onPressed: onToggle,
+        ),
+        filled: true,
+        fillColor: const Color(0xFF1F1F1F),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
       ),
     );
