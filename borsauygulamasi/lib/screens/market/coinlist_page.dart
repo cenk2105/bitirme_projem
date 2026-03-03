@@ -1,6 +1,8 @@
 import 'package:borsauygulamasi/models/coin.dart';
+import 'package:borsauygulamasi/screens/details/coin_detail_page.dart';
 import 'package:borsauygulamasi/services/coin_service.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Hafıza için eklendi
 
 enum SortType {
   none,
@@ -21,17 +23,28 @@ class _CoinListScreenState extends State<CoinListScreen> {
   final CoinService _coinService = CoinService();
   late Stream<List<Coin>> _coinStream;
   SortType _currentSort = SortType.none;
-
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
+
+  // SEKME VE FAVORİ YÖNETİMİ
+  String _activeTab = "Varlıklar"; // "Favoriler" veya "Varlıklar"
+  List<String> _favoriteSymbols = [];
 
   @override
   void initState() {
     super.initState();
     _coinStream = _coinService.getStream();
+    _loadFavorites();
   }
 
-  // Sıralama mantığını yöneten fonksiyon
+  // Hafızadan favorileri yükleme
+  Future<void> _loadFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _favoriteSymbols = prefs.getStringList('favorites') ?? [];
+    });
+  }
+
   List<Coin> _sortCoins(List<Coin> coins) {
     List<Coin> sortedList = List.from(coins);
     switch (_currentSort) {
@@ -61,13 +74,12 @@ class _CoinListScreenState extends State<CoinListScreen> {
 
   void _toggleSort(SortType asc, SortType desc) {
     setState(() {
-      if (_currentSort == asc) {
+      if (_currentSort == asc)
         _currentSort = desc;
-      } else if (_currentSort == desc) {
+      else if (_currentSort == desc)
         _currentSort = SortType.none;
-      } else {
+      else
         _currentSort = asc;
-      }
     });
   }
 
@@ -75,102 +87,60 @@ class _CoinListScreenState extends State<CoinListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF121212),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.account_circle_outlined,
-            color: Colors.amberAccent,
-            size: 28,
-          ),
-          onPressed: () {
-            print("Profile git");
-          },
-        ),
-        title: Container(
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: TextField(
-            controller: _searchController,
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value.toLowerCase();
-              });
-            },
-            style: const TextStyle(color: Colors.white, fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'Varlık Ara',
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-              prefixIcon: const Icon(
-                Icons.search,
-                color: Colors.amberAccent,
-                size: 20,
-              ),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 10),
-            ),
-          ),
-        ),
-        actions: [
-          if (_searchQuery.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.close, color: Colors.grey, size: 20),
-              onPressed: () {
-                _searchController.clear();
-                setState(() {
-                  _searchQuery = "";
-                });
-              },
-            ),
-          const SizedBox(width: 10),
-        ],
-      ),
+      appBar: _buildAppBar(),
       body: Column(
         children: [
-          _buildHeader(),
+          _buildTopTabs(), // Favoriler / Varlıklar butonları
+          _buildHeader(), // Sıralama başlıkları
           Expanded(
             child: StreamBuilder<List<Coin>>(
               stream: _coinStream,
               builder: (context, snapshot) {
-                if (snapshot.hasError) {
+                if (snapshot.hasError)
                   return Center(
                     child: Text(
                       'Hata: ${snapshot.error}',
                       style: const TextStyle(color: Colors.red),
                     ),
                   );
-                }
-
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty)
                   return const Center(
                     child: CircularProgressIndicator(color: Colors.yellow),
                   );
+
+                var displayList = snapshot.data!;
+
+                // 1. SEKME FİLTRESİ
+                if (_activeTab == "Favoriler") {
+                  displayList = displayList
+                      .where(
+                        (c) =>
+                            _favoriteSymbols.contains(c.symbol.toLowerCase()),
+                      )
+                      .toList();
                 }
 
-                // --- FİLTRELEME VE SIRALAMA MANTIĞI ---
-                final allCoins = snapshot.data!;
-
-                // 1. Arama sorgusuna göre filtrele (Sembol içindeki USDT'yi temizleyip bakıyoruz)
-                final filteredCoins = allCoins.where((coin) {
+                // 2. ARAMA FİLTRESİ
+                final filteredCoins = displayList.where((coin) {
                   final cleanName = coin.symbol
                       .replaceAll('USDT', '')
                       .toLowerCase();
                   return cleanName.contains(_searchQuery);
                 }).toList();
 
-                // 2. Filtrelenmiş listeyi seçili kritere göre sırala
+                // 3. SIRALAMA
                 final sortedCoins = _sortCoins(filteredCoins);
 
-                // Eğer arama sonucunda kimse kalmadıysa kullanıcıya bilgi ver
                 if (sortedCoins.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
-                      'Varlık bulunamadı',
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                      _activeTab == "Favoriler"
+                          ? "Favori varlık bulunamadı"
+                          : "Varlık bulunamadı",
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
                     ),
                   );
                 }
@@ -178,7 +148,21 @@ class _CoinListScreenState extends State<CoinListScreen> {
                 return ListView.builder(
                   itemCount: sortedCoins.length,
                   itemBuilder: (context, index) {
-                    return _buildCoinRow(sortedCoins[index]);
+                    final coin = sortedCoins[index];
+                    return InkWell(
+                      onTap: () async {
+                        // Detay sayfasına git ve dönüşte favori listesini YENİLE
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                CoinDetailPage(symbol: coin.symbol),
+                          ),
+                        );
+                        _loadFavorites();
+                      },
+                      child: _buildCoinRow(coin),
+                    );
                   },
                 );
               },
@@ -186,6 +170,101 @@ class _CoinListScreenState extends State<CoinListScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // ÜST SEKME BUTONLARI
+  Widget _buildTopTabs() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          _tabButton("Favoriler"),
+          const SizedBox(width: 20),
+          _tabButton("Varlıklar"),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabButton(String title) {
+    bool isActive = _activeTab == title;
+    return GestureDetector(
+      onTap: () => setState(() => _activeTab = title),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: isActive ? Colors.white : Colors.grey,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          if (isActive)
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              height: 3,
+              width: 20,
+              color: Colors.amberAccent,
+            ),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: const Color(0xFF121212),
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(
+          Icons.account_circle_outlined,
+          color: Colors.amberAccent,
+          size: 28,
+        ),
+        onPressed: () {
+          print("Profile git");
+        },
+      ),
+      title: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: TextField(
+          controller: _searchController,
+          onChanged: (value) =>
+              setState(() => _searchQuery = value.toLowerCase()),
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          decoration: InputDecoration(
+            hintText: 'Varlık Ara',
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+            prefixIcon: const Icon(
+              Icons.search,
+              color: Colors.amberAccent,
+              size: 20,
+            ),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          ),
+        ),
+      ),
+      actions: [
+        if (_searchQuery.isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+            onPressed: () {
+              _searchController.clear();
+              setState(() {
+                _searchQuery = "";
+              });
+            },
+          ),
+        const SizedBox(width: 10),
+      ],
     );
   }
 
@@ -273,7 +352,7 @@ class _CoinListScreenState extends State<CoinListScreen> {
     final String cleanSymbol = coin.symbol.replaceAll('USDT', '').toLowerCase();
 
     return Container(
-      height: 55,
+      height: 65,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: Colors.white10)),
@@ -298,18 +377,16 @@ class _CoinListScreenState extends State<CoinListScreen> {
                     child: Image.asset(
                       'images/coins_images/$cleanSymbol.png',
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Center(
-                          child: Text(
-                            coin.symbol[0],
-                            style: const TextStyle(
-                              color: Colors.black87,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Text(
+                          coin.symbol[0],
+                          style: const TextStyle(
+                            color: Colors.black87,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
                   ),
                 ),

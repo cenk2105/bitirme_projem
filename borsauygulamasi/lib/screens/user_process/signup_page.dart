@@ -1,4 +1,8 @@
+import 'package:borsauygulamasi/screens/main_screen.dart';
 import 'package:borsauygulamasi/screens/user_process/changepassword_page.dart';
+import 'package:borsauygulamasi/screens/user_process/login_page.dart';
+import 'package:borsauygulamasi/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class SignupPage extends StatefulWidget {
@@ -12,6 +16,8 @@ class _SignupPageState extends State<SignupPage> {
   // 1. Şifre doğrulama için AYRI bir kontrolcü ekledik
   final TextEditingController confirmPasswordController =
       TextEditingController();
+
+  final AuthService _authService = AuthService();
 
   bool obscurePassword = true;
   // 2. Şifre doğrulama görünürlüğü için AYRI bir değişken ekledik
@@ -111,8 +117,19 @@ class _SignupPageState extends State<SignupPage> {
               const SizedBox(height: 20),
 
               ElevatedButton(
-                onPressed: () {
-                  // Şifre kontrol mantığı örneği
+                onPressed: () async {
+                  // 1. Alanların boş olup olmadığını kontrol et
+                  if (emailController.text.isEmpty ||
+                      passwordController.text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Lütfen tüm alanları doldurun!"),
+                      ),
+                    );
+                    return;
+                  }
+
+                  // 2. Şifrelerin eşleştiğini kontrol et (Zaten eklemiştin, pekiştirelim)
                   if (passwordController.text !=
                       confirmPasswordController.text) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -120,7 +137,44 @@ class _SignupPageState extends State<SignupPage> {
                     );
                     return;
                   }
-                  print('Kayıt İşlemi: ${emailController.text}');
+
+                  try {
+                    // 3. Kayıt işlemini başlat
+                    await _authService.signUp(
+                      emailController.text.trim(), // Gereksiz boşlukları siler
+                      passwordController.text,
+                    );
+
+                    // 4. Başarılıysa ana ekrana yönlendir
+                    if (mounted) {
+                      // Context hala geçerli mi kontrolü
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => LoginPage()),
+                        (route) => false,
+                      );
+                    }
+                  } on FirebaseAuthException catch (e) {
+                    // 5. Firebase'den gelen hataları kullanıcıya göster
+                    String mesaj = "Kayıt sırasında bir hata oluştu.";
+
+                    if (e.code == 'email-already-in-use') {
+                      mesaj = "Bu e-posta adresi zaten kullanımda.";
+                    } else if (e.code == 'weak-password') {
+                      mesaj = "Şifre çok zayıf (en az 6 karakter olmalı).";
+                    } else if (e.code == 'invalid-email') {
+                      mesaj = "Geçersiz e-posta formatı.";
+                    }
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(mesaj),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  } catch (e) {
+                    print(e.toString());
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amberAccent,

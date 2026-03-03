@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:borsauygulamasi/services/auth_service.dart'; // AuthService dosyanı import et
 
 class ChangePassword extends StatefulWidget {
   const ChangePassword({super.key});
@@ -9,8 +10,7 @@ class ChangePassword extends StatefulWidget {
 
 class _ChangePasswordState extends State<ChangePassword> {
   final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  bool obscurePassword = true;
+  final AuthService _authService = AuthService(); // Servis nesnesi oluşturuldu
 
   @override
   Widget build(BuildContext context) {
@@ -22,19 +22,19 @@ class _ChangePasswordState extends State<ChangePassword> {
           onPressed: () {
             Navigator.pop(context);
           },
-          icon: Icon(Icons.arrow_back_rounded, color: Colors.amberAccent),
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.amberAccent),
         ),
       ),
-      backgroundColor: Color.fromRGBO(155, 159, 163, 1.0),
+      backgroundColor: const Color.fromRGBO(155, 159, 163, 1.0),
       body: Center(
         child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: 30, vertical: 50),
+          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 50),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Başlık
-              Text(
-                'Şifreyi Değiştir',
+              const Text(
+                'Şifreyi Sıfırla',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 32,
@@ -42,21 +42,30 @@ class _ChangePasswordState extends State<ChangePassword> {
                   color: Colors.black87,
                 ),
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
 
-              Text(
-                "E-posta adersine şifre yenileme bağlantısı gönderilecektir.",
+              const Text(
+                "E-posta adresinize şifre yenileme bağlantısı gönderilecektir. Lütfen e-postanızı kontrol edin.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 20),
+
               // E-posta TextField
               TextField(
                 controller: emailController,
                 keyboardType: TextInputType.emailAddress,
-                style: TextStyle(color: Colors.white),
+                style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   hintText: 'E-posta',
-                  hintStyle: TextStyle(color: Colors.grey[200]),
-                  prefixIcon: Icon(Icons.email, color: Colors.amberAccent),
+                  hintStyle: TextStyle(color: Colors.grey[400]),
+                  prefixIcon: const Icon(
+                    Icons.email,
+                    color: Colors.amberAccent,
+                  ),
                   filled: true,
                   fillColor: Colors.black87,
                   border: OutlineInputBorder(
@@ -65,45 +74,66 @@ class _ChangePasswordState extends State<ChangePassword> {
                   ),
                 ),
               ),
-              SizedBox(height: 20),
-              // Giriş Yap Butonu
+              const SizedBox(height: 20),
+
+              // Bağlantı Gönder Butonu
               ElevatedButton(
-                onPressed: () {
-                  // Buraya giriş işlemini ekleyebilirsin
-                  print('E-posta: ${emailController.text}');
-                  print('Şifre: ${passwordController.text}');
+                onPressed: () async {
+                  String email = emailController.text.trim();
 
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  if (email.isEmpty) {
+                    _showMessage(
+                      "Lütfen e-posta adresinizi girin.",
+                      isError: true,
+                    );
+                    return;
+                  }
 
-                  // Yeni mesajı gösterir
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Şifre sıfırlama e-postası gönderildi!'),
-                      duration: Duration(
-                        seconds: 2,
-                      ), // Ekranda kaç saniye kalacağı
-                    ),
-                  );
+                  try {
+                    // Firebase servisini çağır
+                    await _authService.sendPasswordResetEmail(email);
 
-                  Navigator.pop(context);
+                    if (!mounted) return;
+
+                    _showMessage("Sıfırlama bağlantısı gönderildi!");
+
+                    // İşlem başarılıysa 2 saniye sonra sayfadan çık
+                    Future.delayed(const Duration(seconds: 2), () {
+                      if (mounted) Navigator.pop(context);
+                    });
+                  } catch (e) {
+                    _showMessage("Hata oluştu: ${e.toString()}", isError: true);
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amberAccent,
                   foregroundColor: Colors.black,
-                  padding: EdgeInsets.symmetric(vertical: 15),
+                  padding: const EdgeInsets.symmetric(vertical: 15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   elevation: 5,
                 ),
-                child: Text(
-                  'Gönder',
+                child: const Text(
+                  'Bağlantı Gönder',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // Kullanıcıya geri bildirim veren SnackBar metodu
+  void _showMessage(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: const Duration(seconds: 3),
       ),
     );
   }

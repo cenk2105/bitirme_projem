@@ -1,5 +1,8 @@
+import 'package:borsauygulamasi/screens/main_screen.dart';
 import 'package:borsauygulamasi/screens/user_process/changepassword_page.dart';
 import 'package:borsauygulamasi/screens/user_process/signup_page.dart';
+import 'package:borsauygulamasi/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class LoginPage extends StatefulWidget {
@@ -11,6 +14,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool obscurePassword = true;
+  final AuthService _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
@@ -106,16 +110,46 @@ class _LoginPageState extends State<LoginPage> {
 
               // Giriş Yap Butonu
               ElevatedButton(
-                onPressed: () {
-                  // Buraya giriş işlemini ekleyebilirsin
-                  print('E-posta: ${emailController.text}');
-                  print('Şifre: ${passwordController.text}');
-                  //Bu kisimda yonlendirme ile beraber
-                  /*Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => CoinListScreen()),
-                    (route) => false,
-                  );*/
+                onPressed: () async {
+                  // Basit bir boşluk kontrolü
+                  if (emailController.text.isEmpty ||
+                      passwordController.text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Lütfen tüm alanları doldurun!")),
+                    );
+                    return;
+                  }
+
+                  try {
+                    // Firebase girişi başlat
+                    await _authService.signIn(
+                      emailController.text,
+                      passwordController.text,
+                    );
+
+                    // Başarılıysa yönlendir
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => MainScreen()),
+                      (route) => false,
+                    );
+                  } on FirebaseAuthException catch (e) {
+                    // Hata durumunda kullanıcıya mesaj göster
+                    String mesaj = "Giriş başarısız";
+                    if (e.code == 'user-not-found')
+                      mesaj = "Kullanıcı bulunamadı.";
+                    else if (e.code == 'wrong-password')
+                      mesaj = "Hatalı şifre.";
+                    else if (e.code == 'invalid-email')
+                      mesaj = "Geçersiz e-posta formatı.";
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(mesaj),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amberAccent,
