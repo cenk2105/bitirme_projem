@@ -1,5 +1,6 @@
 import 'package:borsauygulamasi/models/coin.dart';
 import 'package:borsauygulamasi/screens/details/coin_detail_page.dart';
+import 'package:borsauygulamasi/screens/main_screen.dart';
 import 'package:borsauygulamasi/services/coin_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Hafıza için eklendi
@@ -151,15 +152,29 @@ class _CoinListScreenState extends State<CoinListScreen> {
                     final coin = sortedCoins[index];
                     return InkWell(
                       onTap: () async {
-                        // Detay sayfasına git ve dönüşte favori listesini YENİLE
-                        await Navigator.push(
+                        final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
                                 CoinDetailPage(symbol: coin.symbol),
                           ),
                         );
-                        _loadFavorites();
+
+                        // Eğer detay sayfasından bir yönlendirme verisi geldiyse
+                        if (result != null &&
+                            result is Map &&
+                            result["action"] == "navigate_to_trade") {
+                          // MainScreen'deki o meşhur metodu çağırıyoruz
+                          // Artık bu context (CoinListPage'in contexti) MainScreen'in altında olduğu için çalışacaktır.
+                          MainScreen.navigateToTrade(
+                            context,
+                            result["symbol"],
+                            result["type"],
+                          );
+                        } else {
+                          // Normal geri geldiyse sadece favorileri yenile
+                          _loadFavorites();
+                        }
                       },
                       child: _buildCoinRow(coin),
                     );

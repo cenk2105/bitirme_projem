@@ -1,3 +1,4 @@
+import 'package:borsauygulamasi/screens/main_screen.dart';
 import 'package:borsauygulamasi/screens/market/trade_page.dart';
 import 'package:flutter/material.dart';
 import 'package:candlesticks/candlesticks.dart';
@@ -411,13 +412,17 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
     ),
     onPressed: () {
       // YÖNLENDİRME BURADA YAPILIYOR
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              TradePage(symbol: widget.symbol, initialType: text),
-        ),
-      );
+      Navigator.pop(context, {
+        "action": "navigate_to_trade",
+        "symbol": widget.symbol,
+        "type": text,
+      });
+
+      // 2. MainScreen'deki navigate metodunu tetikle
+      // Bu işlem bir sonraki frame'de yapılmalıdır (UI çakışmaması için)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        MainScreen.navigateToTrade(context, widget.symbol, text);
+      });
     },
     child: Text(
       text,

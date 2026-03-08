@@ -13,6 +13,7 @@ class SignupPage extends StatefulWidget {
 class _SignupPageState extends State<SignupPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
   // 1. Şifre doğrulama için AYRI bir kontrolcü ekledik
   final TextEditingController confirmPasswordController =
       TextEditingController();
@@ -63,6 +64,12 @@ class _SignupPageState extends State<SignupPage> {
               ),
               const SizedBox(height: 40),
 
+              _buildTextField(
+                controller: usernameController,
+                hintText: 'Kullanıcı Adı...',
+                icon: Icons.person,
+              ),
+              const SizedBox(height: 20),
               // E-posta Alanı
               _buildTextField(
                 controller: emailController,
@@ -143,6 +150,7 @@ class _SignupPageState extends State<SignupPage> {
                     await _authService.signUp(
                       emailController.text.trim(), // Gereksiz boşlukları siler
                       passwordController.text,
+                      usernameController.text.trim(),
                     );
 
                     // 4. Başarılıysa ana ekrana yönlendir

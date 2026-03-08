@@ -3,15 +3,21 @@ import 'package:borsauygulamasi/screens/market/home_page.dart';
 import 'package:borsauygulamasi/screens/market/trade_page.dart';
 import 'package:borsauygulamasi/screens/market/wallet_page.dart';
 import 'package:flutter/material.dart';
-// Örnek sayfaların
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
-  static void navigateToTrade(BuildContext context) {
+  // Seçilen coini ve tipi gönderen metod
+  static void navigateToTrade(
+    BuildContext context,
+    String symbol,
+    String type,
+  ) {
     final _MainScreenState? state = context
         .findAncestorStateOfType<_MainScreenState>();
-    state?.updateIndex(2); // Al-Sat sekmesi 2. indiste
+    if (state != null) {
+      state.updateTradeDetails(symbol, type);
+    }
   }
 
   @override
@@ -19,44 +25,49 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0; // Seçili sekmeyi tutar
+  int _selectedIndex = 1; // Başlangıçta Piyasalar (CoinList) açık olsun
 
-  void updateIndex(int index) {
+  // Seçilen coin bilgilerini tutan değişkenler
+  String selectedSymbol = "BTCUSDT";
+  String selectedType = "AL";
+
+  void updateTradeDetails(String symbol, String type) {
     setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-  // Sekmelere tıklandığında gösterilecek sayfalar listesi
-  final List<Widget> _pages = [
-    NewsPage(), // 0. İndis
-    CoinListScreen(), // 1. İndis (Coin listesinin olduğu yer)
-    const TradePage(symbol: "BTCUSDT", initialType: "AL"), // 2. İndis
-    WalletPage(), // 3. İndis
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
+      selectedSymbol = symbol;
+      selectedType = type;
+      _selectedIndex = 2; // Al-Sat sekmesine geç
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Sayfalar listesini build içinde tanımlıyoruz ki değişkenler değiştikçe sayfalar yenilensin
+    final List<Widget> _pages = [
+      const NewsPage(), // 0. İndis
+      CoinListScreen(), // 1. İndis
+      TradePage(
+        key: ValueKey(
+          selectedSymbol,
+        ), // Bu key sayfanın yeni coinle sıfırlanmasını sağlar
+        symbol: selectedSymbol,
+        initialType: selectedType,
+      ), // 2. İndis
+      const WalletPage(), // 3. İndis
+    ];
+
     return Scaffold(
-      // Body kısmı seçili olan sayfayı gösterir
-      body: IndexedStack(
-        index: _selectedIndex,
-        children:
-            _pages, // Sayfaların durumunu korumak için IndexedStack iyidir
-      ),
+      body: IndexedStack(index: _selectedIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed, // 4 sekme için bu tip daha stabil
-        backgroundColor: const Color(0xFF121212), // Senin koyu teman
-        selectedItemColor: Colors.amberAccent, // Seçili ikon rengi
-        unselectedItemColor: Colors.grey, // Seçili olmayan ikon rengi
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF121212),
+        selectedItemColor: Colors.amberAccent,
+        unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_filled),

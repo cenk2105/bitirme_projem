@@ -17,7 +17,6 @@ class _WalletPageState extends State<WalletPage> {
   final TextEditingController _balanceController = TextEditingController();
   final CoinService _coinService = CoinService();
 
-  // Başlangıç bakiyesini Firestore'a kaydeder
   Future<void> _setInitialBalance() async {
     double? amount = double.tryParse(_balanceController.text);
     if (amount == null || amount <= 0) {
@@ -27,9 +26,9 @@ class _WalletPageState extends State<WalletPage> {
       return;
     }
 
-    await _firestore.collection('users').doc(_auth.currentUser!.uid).set({
+    await _firestore.collection('users').doc(_auth.currentUser!.uid).update({
       'balance': amount,
-    }, SetOptions(merge: true));
+    });
   }
 
   @override
@@ -37,8 +36,9 @@ class _WalletPageState extends State<WalletPage> {
     return Scaffold(
       backgroundColor: const Color(0xFF0B0E11),
       appBar: AppBar(
-        title: const Text("Cüzdanım"),
+        title: const Text("Cüzdanım", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: _firestore
@@ -46,27 +46,27 @@ class _WalletPageState extends State<WalletPage> {
             .doc(_auth.currentUser!.uid)
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (snapshot.hasError)
+            return const Center(child: Text("Hata oluştu"));
+          if (!snapshot.hasData) {
             return const Center(
               child: CircularProgressIndicator(color: Colors.amber),
             );
+          }
 
           var userData = snapshot.data!.data() as Map<String, dynamic>?;
-          double balance = userData?['balance']?.toDouble() ?? 0.0;
+          double balance = (userData?['balance'] ?? 0).toDouble();
 
-          // EĞER BAKİYE YOKSA GİRİŞ EKRANI GÖSTER
           if (balance == 0) {
             return _buildInitialBalanceSetup();
           }
 
-          // BAKİYE VARSA PORTFÖYÜ LİSTELE
           return _buildPortfolioUI(balance);
         },
       ),
     );
   }
 
-  // Başlangıç Bakiyesi Giriş Arayüzü
   Widget _buildInitialBalanceSetup() {
     return Padding(
       padding: const EdgeInsets.all(30.0),
@@ -120,11 +120,9 @@ class _WalletPageState extends State<WalletPage> {
     );
   }
 
-  // Normal Cüzdan Arayüzü
   Widget _buildPortfolioUI(double balance) {
     return Column(
       children: [
-        // Toplam Varlık Kartı
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(24),
@@ -166,8 +164,6 @@ class _WalletPageState extends State<WalletPage> {
             ],
           ),
         ),
-
-        // Varlık Listesi
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
             stream: _firestore
@@ -201,28 +197,57 @@ class _WalletPageState extends State<WalletPage> {
     );
   }
 
-  // Her bir coin satırı ve Canlı Kar/Zarar hesabı
   Widget _buildPortfolioItem(Map<String, dynamic> data) {
     String symbol = data['symbol'];
-    double amount = data['amount'].toDouble();
-    double buyPrice = data['buyPrice'].toDouble();
+    double amount = (data['amount'] ?? 0).toDouble();
+    double buyPrice = (data['buyPrice'] ?? 0).toDouble();
+
+    String ticker = symbol.replaceAll('USDT', '').toLowerCase();
 
     return StreamBuilder<List<Coin>>(
       stream: _coinService.getStream(),
       builder: (context, snapshot) {
         double currentPrice = 0;
-        if (snapshot.hasData) {
-          currentPrice = snapshot.data!
-              .firstWhere((c) => c.symbol == symbol)
-              .price;
+
+        // --- HATA ÇÖZÜMÜ BURADA ---
+        if (snapshot.hasData && snapshot.data != null) {
+          // firstWhere yerine iterable'ı filtreleyip güvenli bir şekilde alıyoruz
+          final matchingCoins = snapshot.data!.where((c) => c.symbol == symbol);
+          if (matchingCoins.isNotEmpty) {
+            currentPrice = matchingCoins.first.price;
+          } else {
+            // Eğer servis listesinde bu coin yoksa, maliyet fiyatını veya 0'ı kullanabiliriz
+            currentPrice = 0;
+          }
         }
 
         double pnl = (currentPrice - buyPrice) * amount;
         bool isProfit = pnl >= 0;
 
         return ListTile(
-          leading: CircleAvatar(child: Text(symbol[0])),
-          title: Text(symbol, style: const TextStyle(color: Colors.white)),
+          leading: SizedBox(
+            width: 40,
+            height: 40,
+            child: Image.asset(
+              'images/coins_images/$ticker.png',
+              errorBuilder: (context, error, stackTrace) {
+                return CircleAvatar(
+                  backgroundColor: Colors.amber,
+                  child: Text(
+                    symbol[0],
+                    style: const TextStyle(color: Colors.black, fontSize: 14),
+                  ),
+                );
+              },
+            ),
+          ),
+          title: Text(
+            symbol,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           subtitle: Text(
             "Miktar: ${amount.toStringAsFixed(4)}",
             style: const TextStyle(color: Colors.grey),
